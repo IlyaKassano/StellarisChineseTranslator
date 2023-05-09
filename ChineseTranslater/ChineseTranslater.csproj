@@ -1,0 +1,9 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+<PropertyGroup>
+  <TargetFramework>net462</TargetFramework>
+  <OutputType>Exe</OutputType>
+</PropertyGroup>
+<ItemGroup>
+  <PackageReference Include="GTranslate" Version="2.1.6" />
+</ItemGroup>
+</Project>
