@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using ChineseTranslater.Extensions;
+using ChineseTranslater.Helpers;
 using GTranslate.Translators;
 
 namespace ChineseTranslater.FileTranslaters
@@ -21,12 +22,27 @@ namespace ChineseTranslater.FileTranslaters
             Console.WriteLine("Translating AMPL strings: " + Path);
 
             var content = File.ReadAllText(Path);
-            var regex = new Regex(@"(?<!#.*)(?<![\w\-])(?=[一-龥]+)[一-龥\d\-]+.*?(?![\w\-])|(?<=[A-Z])[一-龥]+(?=!)");
-            var chineseWords = regex.Matches(content).Cast<Match>().Select(c => c.Value);
+            content = AddQuotes(content);
+
+            Regex regex = PatternScanner.GetPatternChineseWordsAsSetValue(content);
+            var chineseWords = regex.Matches(content)
+                .Cast<Match>()
+                .Select(c => c.Value);
 
             var newContent = regex.ReplaceAsync(content, async (r) => await Translate(r.Value));
 
             return newContent;
+        }
+
+        string AddQuotes(string content)
+        {
+            Regex noQuotesRegex = PatternScanner.GetPatternChineseWordsAsSetValueWithoutQuotes(content);
+            return noQuotesRegex.Replace(content, (r) =>
+                {
+                    string newValue = $@"""{r.Value}""";
+                    Console.WriteLine("Adding quotes to: " + r.Value);
+                    return newValue;
+                });
         }
 
         internal override void Save(string filePath, string content)
