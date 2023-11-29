@@ -19,16 +19,21 @@ namespace ChineseTranslater.Extensions
                 var replacement = await replacementFn(match);
                 replacements.Add(match, replacement);
             }
+            replacements = replacements.OrderBy(r => r.Key.Index)
+                .ToDictionary(k => k.Key, v => v.Value);
+
+            if (!replacements.Any())
+                return input;
 
             var sb = new StringBuilder();
             var lastIndex = 0;
 
-            foreach (var repl in replacements.OrderBy(r => r.Key.Index))
+            foreach (var repl in replacements)
             {
                 sb.Append(input, lastIndex, repl.Key.Index - lastIndex);
                 sb.Append(repl.Value);
 
-                lastIndex = repl.Key.Index + repl.Key.Length;
+                lastIndex = repl.Key.Index + repl.Key.Value.Length;
             }
 
             sb.Append(input, lastIndex, input.Length - lastIndex);

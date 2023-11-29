@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using ChineseTranslater.Extensions;
 using ChineseTranslater.Helpers;
@@ -17,32 +19,46 @@ namespace ChineseTranslater.FileTranslaters
         {
         }
 
-        internal override Task<string> TranslateFile()
+        internal async override Task<string> TranslateFile()
         {
             Console.WriteLine("Translating AMPL strings: " + Path);
+            if (Path.Contains("00_random"))
+                ;
 
             var content = File.ReadAllText(Path);
             content = AddQuotes(content);
 
-            Regex regex = PatternScanner.GetPatternChineseWordsAsSetValue(content);
-            var chineseWords = regex.Matches(content)
-                .Cast<Match>()
-                .Select(c => c.Value);
+            Regex setValueRegex = PatternScanner.GetPatternChineseWordsAsSetValue();
+            Regex arrayValueRegex = PatternScanner.GetPatternChineseWordsAsArrayValue();
 
-            var newContent = regex.ReplaceAsync(content, async (r) => await Translate(r.Value));
+            string newContent = await MultiThreading.TranslateByRegex(content, setValueRegex, Translate);
+            newContent = await MultiThreading.TranslateByRegex(content, arrayValueRegex, (input) => Translate(AddQuotesToArrayValues(input)));
 
             return newContent;
         }
 
         string AddQuotes(string content)
         {
-            Regex noQuotesRegex = PatternScanner.GetPatternChineseWordsAsSetValueWithoutQuotes(content);
+            Regex noQuotesRegex = PatternScanner.GetPatternChineseWordsAsSetValueWithoutQuotes();
             return noQuotesRegex.Replace(content, (r) =>
                 {
                     string newValue = $@"""{r.Value}""";
                     Console.WriteLine("Adding quotes to: " + r.Value);
                     return newValue;
                 });
+        }
+
+        static int i = 0;
+        string AddQuotesToArrayValues(string value)
+        {
+            return "\"" + value.Trim()
+                .Replace("\r", "")
+                .Replace("\n\n", "\n")
+                .Replace("\n", "\"\n")
+                .Replace("\" ", " ")
+                .Replace(" \"", " ")
+                .Replace(" ", "\" \"")
+                .Replace("\t", "\t\"") + "\"";
         }
 
         internal override void Save(string filePath, string content)

@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using ChineseTranslater.Extensions;
 using ChineseTranslater.Helpers;
@@ -11,6 +13,18 @@ using GTranslate.Translators;
 
 namespace ChineseTranslater.FileTranslaters
 {
+    internal record MatchInfo
+    {
+        public MatchInfo(int index, string value)
+        {
+            Index = index;
+            Value = value;
+        }
+
+        public int Index { get; set; }
+        public string Value { get; set; }
+    }
+
     internal class YamlTranslator : FileTranslater
     {
         public YamlTranslator(ITranslator translater, string filePath) : base(translater, filePath)
@@ -24,8 +38,10 @@ namespace ChineseTranslater.FileTranslaters
             var content = File.ReadAllText(Path);
             content = content.ReplaceFirst("l_simp_chinese", "l_english");
             //var regex = new Regex(@"(?<=\w+ *: *0? *)[^0 \s]""?[\w ""']+""?\b");
-            var chineseCharsRegex = PatternScanner.GetPatternChineseWords(content);
-            var newContent = await chineseCharsRegex.ReplaceAsync(content, ReplaceChinese);
+            var chineseCharsRegex = PatternScanner.GetPatternChineseWords();
+
+            string newContent = await MultiThreading.TranslateByRegex(content, chineseCharsRegex, Translate);
+
             newContent = PatternScanner.AddSpaceBeforeColorOperator(newContent);
             newContent = PatternScanner.AddSpaceAfterColorOperator(newContent);
 
